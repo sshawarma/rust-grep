@@ -18,7 +18,7 @@ fn get_file_args() -> Vec<String> {
 }
 
 fn read_file(filename: &str) -> Result<String, io::Error> {
-    let contents = fs::read_to_string(filename).expect("Couldn't read file");
+    let contents = fs::read_to_string(filename)?;
     Ok(contents)
 }
 
@@ -66,12 +66,13 @@ fn main() {
     let needle = &args[2];
 
     let haystack = read_file(query).unwrap_or_else(|error| {
-        panic!(error);
+        println!("Couldn't read {}: {}", query, error);
+        "".to_string()
     });
     let lines = get_lines(&haystack);
 
     let re = Regex::new(needle).unwrap_or_else(|error| {
-        panic!(error);
+        panic!("Couldn't process regex expression `{}`: {}", needle, error);
     });
     let matches = re.find_iter(&haystack);
     let mut processed: Vec<usize> = Vec::new();
