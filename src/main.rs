@@ -2,6 +2,16 @@ use std::io;
 use std::env;
 use std::fs;
 
+extern crate regex;
+use regex::Regex;
+
+struct Line {
+    n: usize,
+    line: String,
+    start: usize,
+    end: usize,
+}
+
 fn get_file_args() -> Vec<String> {
     let v: Vec<String> = env::args().collect();
     v
@@ -12,8 +22,37 @@ fn read_file(filename: &str) -> Result<String, io::Error> {
     Ok(contents)
 }
 
-fn match_string(line: &str, needle: &str) -> bool {
-      line.contains(needle)
+fn get_lines(haystack: &str) -> Vec<Line> {
+    let mut lines: Vec<Line> = Vec::new();
+    let bytes: &[u8] = haystack.as_bytes();
+
+    let mut n = 1;
+    let mut j = 0;
+    for i in 0..bytes.len() {
+        if bytes[i] as char == '\n' {
+            let l = Line {
+                n,
+                line: haystack[j..i].to_string(),
+                start: j,
+                end: i,
+            };
+            lines.push(l);
+            j = i+1;
+            n += 1;
+        }
+    }
+    lines
+}
+
+fn get_line(lines: &Vec<Line>, start: usize, end: usize) -> &Line {
+    let mut s = &lines[0];
+    for line in lines.iter() {
+        if start >= line.start && end <= line.end {
+            s = line;
+            break;
+        }
+    }
+    s
 }
 
 fn main() {
@@ -29,11 +68,20 @@ fn main() {
     let haystack = read_file(query).unwrap_or_else(|error| {
         panic!(error);
     });
+    let lines = get_lines(&haystack);
 
-    let lines: Vec<&str> = haystack.split("\n").collect();
-    for i in 0..lines.len() {
-        if match_string(lines[i], needle) {
-            println!("line {}: {}", i+1, lines[i]);
+    let re = Regex::new(needle).unwrap_or_else(|error| {
+        panic!(error);
+    });
+    let matches = re.find_iter(&haystack);
+    let mut processed: Vec<usize> = Vec::new();
+    for m in matches {
+        let l = get_line(&lines, m.start(), m.end());
+        if processed.iter().any(|&n| n == l.n) {
+            continue
+        } else {
+            println!("line {}: {}", l.n, l.line);
+            processed.push(l.n);
         }
     }
 }
